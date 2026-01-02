@@ -1,14 +1,11 @@
-# 8th-NLP-Persona
----
 # 🎮 Cyberpunk 2077 Purchase Intent Simulation (Multi-Agent RAG)
 
-이 프로젝트는 '사이버펑크 2077'의 출시 전후 여론 변화를 시뮬레이션하기 위해, **3가지 다른 방법론(Team 1, 2, 3)**을 비교 분석합니다.
-모든 팀은 공통된 평가 스크립트를 사용하여 실제 데이터(Steam Review, Stock Price)와의 상관계수를 측정합니다.
+이 프로젝트는 '사이버펑크 2077'의 출시 전후 여론 변화를 시뮬레이션하기 위해, **3가지 다른 방법론(Team 1, 2, 3)** 을 비교 분석합니다.
+모든 팀은 공통된 평가 스크립트와 **공통 페르소나 모듈**을 사용하여 실험의 일관성을 유지합니다.
 
 ---
 
 ## 📂 프로젝트 구조 (Directory Structure)
-각 팀은 지정된 폴더 내에서 작업하며, 결과 파일(`.csv`)을 해당 폴더에 저장해야 합니다.
 
 ```bash
 📦 Project Root
@@ -18,9 +15,12 @@
 ├── 📊 ground_truth_steam.csv        # (자동 생성) Steam 정답지
 ├── 📊 ground_truth_stock.csv        # (자동 생성) 주가 정답지
 │
+├── 📁 utils/                        # [공통 모듈]
+│   └── persona_generator.py         # 페르소나 생성기 (Team 1, 2, 3 공용)
+│
 ├── 📁 static_zero_shot/             # [Team 1] 작업 공간
 │   ├── simulation_model_a_v3.py     # 팀 1 시뮬레이션 코드
-│   └── Team1_Static_Results.csv     # 팀 1 결과
+│   └── Team1_Static_ZeroShot_Results.csv # 팀 1 결과
 │
 ├── 📁 static_rag/                   # [Team 2] 작업 공간
 │   ├── simulation_model_b.py        # 팀 2 시뮬레이션 코드
@@ -36,21 +36,55 @@
 
 ## ⚡ 공통 작업 규칙 (Convention)
 
-### 1. CSV 결과 파일 양식 (매우 중요 ⭐)
+### 1. 페르소나 모듈 사용법
 
-모든 팀의 시뮬레이션 결과 CSV는 **반드시 아래 컬럼명을 포함**해야 평가 스크립트가 작동합니다.
+모든 팀은 `utils/persona_generator.py`를 사용하여 동일한 에이전트 집단을 생성해야 합니다.
+
+```python
+import sys
+import os
+
+# 1. 상위 폴더(Project Root)를 경로에 추가 (utils를 불러오기 위함)
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from utils.persona_generator import generate_balanced_personas
+
+# 2. 페르소나 생성 (13명씩 8개 유형 = 총 104명)
+personas = generate_balanced_personas(n_per_type=13)
+
+# 3. 시뮬레이션 루프 예시 (Team 2/3용)
+results = []
+current_date = "2020-12-10"  # 시뮬레이션 시점
+
+for persona in personas:
+    # ... (RAG 검색 및 LLM 호출 로직) ...
+    
+    # 4. 결과 저장 (Dictionary 구성)
+    results.append({
+        "Agent_ID": persona.id,
+        "Name": persona.name,
+        "Persona_Type": persona.gamer_type_name_display, # (필수) 영어 유형 이름
+        "Decision": "YES",           # (필수) YES or NO
+        "Simulation_Date": current_date, # (필수) Team 2, 3는 날짜 꼭 넣어야 함!
+        "Reasoning": "Bugs are terrible..."
+    })
+```
+
+### 2. CSV 결과 파일 양식 (매우 중요 ⭐)
+
+평가 스크립트가 인식할 수 있도록 반드시 아래 컬럼명을 포함해야 합니다.
 
 | 컬럼명 | 필수 여부 | 설명 | 예시 값 |
 | --- | --- | --- | --- |
 | **`Agent_ID`** | 필수 | 에이전트 고유 ID | `ultimate_gamer_1` |
-| **`Persona_Type`** | 필수 | 게이머 유형 | `얼티밋 게이머` |
+| **`Persona_Type`** | 필수 | 게이머 유형 | `The Ultimate Gamer` |
 | **`Decision`** | **필수** | 구매 의사 (YES/NO 파싱용) | `YES`, `NO` |
 | **`Simulation_Date`** | **Team 2, 3 필수** | 시뮬레이션 시점 (YYYY-MM-DD) | `2020-12-10` |
-| `Reasoning` | 선택 | 판단 이유 | `버그가 많아서...` |
+| `Reasoning` | 선택 | 판단 이유 | `Because of bugs...` |
 
 > **주의:** Team 1(Static)은 시간 변화가 없으므로 `Simulation_Date` 컬럼이 없어도 됩니다. (평가 시 `--type static` 옵션 사용)
 
-### 2. 환경 설정 (Environment)
+### 3. 환경 설정 (Environment)
 
 루트 경로에 `.env` 파일을 생성하고 API Key를 설정하세요.
 
@@ -59,7 +93,7 @@ OPENAI_API_KEY=sk-proj-xxxx...
 
 ```
 
-### 3. 데이터 준비 (Data Setup)
+### 4. 데이터 준비 (Data Setup)
 
 대용량 리뷰 데이터는 Git에 없으므로 아래 명령어로 다운로드합니다.
 
@@ -89,7 +123,7 @@ python analyze_ground_truth_stock.py
 
 ```bash
 python evaluate_correlation.py \
-    --model_csv "static_zero_shot/Team1_Static_Results.csv" \
+    --model_csv "static_zero_shot/Team1_Static_ZeroShot_Results.csv" \
     --model_name "Team1_Static" \
     --type "static" \
     --steam_gt "ground_truth_steam.csv" \
@@ -134,5 +168,3 @@ python evaluate_correlation.py \
 3. **Team 3 (Time-Aware RAG):**
 * 시간 가중치(Time Decay) 적용 검색.
 * **목표:** 최신 여론을 즉각 반영하여 실제 Steam/주가 그래프와 유사한 패턴(높은 상관계수) 달성.
-
-
