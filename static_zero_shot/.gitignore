@@ -1,0 +1,10 @@
+.env
+secrets.json
+
+logs/
+*.out
+*.err
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
