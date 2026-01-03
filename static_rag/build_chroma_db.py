@@ -5,6 +5,9 @@ from datetime import datetime
 import torch
 import pickle
 from langdetect import detect, LangDetectException
+import os
+import sys
+import argparse
 
 # 프로젝트 루트 경로 추가 (utils import를 위해)
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))

@@ -21,7 +21,7 @@ echo ""
 mkdir -p logs
 
 # PyTorch 메모리 관리 설정 (OOM 방지)
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_ALLOC_CONF=expandable_segments:True
 
 # Conda 환경 활성화 (base 환경 사용 or 프로젝트 환경)
 # run_training.sh 참조: source /data/mcladinz/anaconda3/etc/profile.d/conda.sh
