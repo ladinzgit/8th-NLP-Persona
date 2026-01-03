@@ -6,15 +6,16 @@ import os
 import argparse
 import sys
 import torch
+from langdetect import detect, LangDetectException
 
 # 설정 (Configuration)
 CSV_PATH = os.path.join("datasets", "reviews", "Cyberpunk_2077_Steam_Reviews.csv")
 DB_PATH = os.path.join("datasets", "chroma_db")
 COLLECTION_NAME = "cyberpunk2077_reviews"
 # Local Model Path (Relative to project root or absolute)
-# User specified: models/Qwen3-Embedding-8B
-MODEL_PATH = os.path.join("models", "Qwen3-Embedding-8B")
-MODEL_NAME = "Qwen3-Embedding-8B" # For metadata or fallback
+# User specified: models/Qwen3-Embedding-0.6B
+MODEL_PATH = os.path.join("models", "Qwen3-Embedding-0.6B")
+MODEL_NAME = "Qwen3-Embedding-0.6B" # For metadata or fallback
 
 def process_reviews(csv_path):
     """
@@ -40,7 +41,25 @@ def process_reviews(csv_path):
     df = df.dropna(subset=['Review'])
     print(f"Rows after dropping empty reviews: {len(df)}")
     
-    # 언어 필터링 등을 추가할 수 있으나, 현재 데이터셋은 대부분 영문으로 가정하고 진행
+    # 언어 필터링 (English Only)
+    print("Filtering for English reviews (this may take a while)...")
+    
+    def is_english(text):
+        try:
+            return detect(str(text)) == 'en'
+        except LangDetectException:
+            return False
+            
+    # Apply filtering
+    # 대량 데이터일 경우 속도가 느릴 수 있음. swifter 등을 쓰면 좋지만 dependency 최소화.
+    # 단순 apply로 진행.
+    df['is_english'] = df['Review'].apply(is_english)
+    
+    # 필터링 전후 비교 로그
+    english_count = df['is_english'].sum()
+    print(f"English reviews found: {english_count} / {len(df)}")
+    
+    df = df[df['is_english']]
     
     return df
 

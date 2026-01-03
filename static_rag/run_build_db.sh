@@ -34,8 +34,8 @@ echo ""
 python -c "import torch; print('PyTorch version:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('CUDA version:', torch.version.cuda if torch.cuda.is_available() else 'N/A')"
 echo ""
 
-# 모델 경로 확인 (models/Qwen3-Embedding-8B)
-MODEL_DIR="models/Qwen3-Embedding-8B"
+# 모델 경로 확인 (models/Qwen3-Embedding-0.6B)
+MODEL_DIR="models/Qwen3-Embedding-0.6B"
 echo "Checking model directory: $MODEL_DIR"
 if [ -d "$MODEL_DIR" ]; then
     echo "✓ Custom Model found at $MODEL_DIR"
