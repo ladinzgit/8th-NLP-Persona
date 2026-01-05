@@ -46,7 +46,7 @@ def get_async_llm_client():
 client, MODEL_NAME = get_async_llm_client()
 print(f"✅ Using model: {MODEL_NAME} (Team 3 - Async)")
 
-OUTPUT_FILE = "time_aware_rag/Team3_TimeAware_Results_Final.csv"
+OUTPUT_FILE = "time_aware_rag/Team3_TimeAware_Results.csv"
 SIMULATION_DATES_FILE = "datasets/simulation_dates.csv"
 
 # =============================================================================

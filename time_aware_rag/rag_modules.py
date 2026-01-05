@@ -10,9 +10,10 @@ from chromadb.utils import embedding_functions
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.search_queries import GAMER_TYPE_QUERIES, GENERAL_QUERY
+from utils.query_cache_manager import get_query_embedding
 
 # ChromaDB 경로 및 컬렉션 설정
-CHROMA_DB_PATH = "datasets/chroma_db"
+CHROMA_DB_PATH = "datasets/chroma_db_new"
 COLLECTION_NAME = "cyberpunk2077_reviews"
 
 def get_chroma_client():
@@ -23,9 +24,18 @@ def get_chroma_client():
     return client
 
 def get_embedding_function():
-    """SentenceTransformer 임베딩 함수 반환"""
-    return embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
+    """
+    임베딩 함수 반환 (OpenAI text-embedding-3-small)
+    """
+    from dotenv import load_dotenv
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not found in .env file.")
+        
+    return embedding_functions.OpenAIEmbeddingFunction(
+        api_key=api_key,
+        model_name="text-embedding-3-small"
     )
 
 class RAGRetriever:
@@ -92,11 +102,14 @@ class RAGRetriever:
 
         candidate_pool = []
 
-        # 각 쿼리마다 넓은 후보 풀 검색 (Team 2는 top_k만, Team 3는 100개)
+        # 각 쿼리마다 넓은 후보 풀 검색 (Team 2는 top_k만, Team 3는 500개)
         for query in selected_queries:
+            # Use cached embedding
+            query_emb = get_query_embedding(query)
+
             results = self.collection.query(
-                query_texts=[query],
-                n_results=300,  # 넓은 풀에서 검색 (Team 2와의 차이점)
+                query_embeddings=[query_emb],
+                n_results=500,  # 넓은 풀에서 검색 (Team 2와의 차이점)
                 include=["documents", "metadatas", "distances"],
                 where={"date": {"$lte": current_date_int}}  # 현재 날짜 이전 리뷰만 (date 필드 사용)
             )
@@ -167,7 +180,7 @@ if __name__ == "__main__":
 
         agent = Agent()
         test_date = "2023-12-01"
-        reviews = retriever.retrieve_reviews(agent, current_date_str=test_date, top_k_final=3)
+        reviews = retriever.retrieve_reviews(agent, current_date_str=test_date, top_k_final=5)
         
         print(f"\n--- Testing Retrieval for date: {test_date} ---")
         for i, review in enumerate(reviews):

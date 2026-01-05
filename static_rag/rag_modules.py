@@ -8,13 +8,14 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.search_queries import GAMER_TYPE_QUERIES, GENERAL_QUERY
+from utils.query_cache_manager import get_query_embedding
 
 # RAG 모듈 (RAG Modules)
 # 이 모듈은 ChromaDB와의 연결 및 검색 로직을 담당합니다.
 # 데이터베이스 경로와 컬렉션 이름을 설정하고, 특정 날짜 이전의 리뷰만 검색하도록 필터링합니다.
 
 # ChromaDB 경로 설정 (Set ChromaDB Path)
-CHROMA_DB_PATH = "datasets/chroma_db"
+CHROMA_DB_PATH = "datasets/chroma_db_new"
 COLLECTION_NAME = "cyberpunk2077_reviews"
 
 def get_chroma_client():
@@ -33,14 +34,18 @@ def get_chroma_client():
 def get_embedding_function():
     """
     임베딩 함수를 설정하여 반환합니다.
-    기존 ChromaDB 컬렉션이 'all-MiniLM-L6-v2' (SentenceTransformer)로 생성되었으므로,
-    이를 맞춰서 사용합니다.
     Returns:
-        embedding_functions.SentenceTransformerEmbeddingFunction: 임베딩 함수 객체
+        embedding_functions.OpenAIEmbeddingFunction: 임베딩 함수 객체
     """
-    # OpenAI 대신 로컬 모델 사용 (DB와의 호환성 유지)
-    return embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
+    from dotenv import load_dotenv
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY not found in .env file.")
+        
+    return embedding_functions.OpenAIEmbeddingFunction(
+        api_key=api_key,
+        model_name="text-embedding-3-small"
     )
 
 class RAGRetriever:
@@ -65,6 +70,7 @@ class RAGRetriever:
     def retrieve_reviews(self, query_text, current_date, top_k=5):
         """
         주어진 쿼리와 날짜를 기준으로 관련 리뷰를 검색합니다.
+        Uses cached embeddings for efficiency.
         
         Args:
             query_text (str): 검색할 쿼리 텍스트 (영어)
@@ -87,8 +93,11 @@ class RAGRetriever:
         
         # print(f"Retrieving for query: '{query_text}' with date filter <= {date_int}")
         
+        # Retrieve embedding from cache
+        query_emb = get_query_embedding(query_text)
+
         results = self.collection.query(
-            query_texts=[query_text],
+            query_embeddings=[query_emb], # Use cached embedding
             n_results=top_k,
             where=where_filter
         )
